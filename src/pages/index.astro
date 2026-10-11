@@ -5,26 +5,280 @@ import items from '../data/items.json';
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>高性价比人生指南</title>
   </head>
   <body>
-    <main>
+    <header>
       <h1>高性价比人生指南</h1>
-      <p>共 {items.length} 条建议</p>
+      <p class="count">共 {items.length} 条建议</p>
 
-      {items.map((item) => (
-        <article>
+      <input
+        type="search"
+        id="search"
+        placeholder="搜索：安全带、痛风、裁员..."
+      />
+
+      <div class="filters">
+        <select id="filter-evidence">
+          <option value="">全部证据等级</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+        </select>
+
+        <select id="filter-value">
+          <option value="">全部性价比</option>
+          <option value="极大">极大</option>
+          <option value="大">大</option>
+          <option value="中">中</option>
+          <option value="小">小</option>
+        </select>
+
+        <select id="filter-cost">
+          <option value="">花不花钱不限</option>
+          <option value="0">不花钱</option>
+          <option value="少">花小钱</option>
+          <option value="大">花大钱</option>
+        </select>
+
+        <button id="reset">重置</button>
+      </div>
+    </header>
+
+    <main class="grid" id="grid">
+      {items.map((item, index) => (
+        <a
+          href={`/item/${item.id}`}
+          class="card"
+          data-index={index}
+          data-evidence={item.evidence}
+          data-value={item.value}
+          data-cost-money={item.costMoney}
+          style={index >= 50 ? 'display:none' : ''}
+        >
           <h2>{item.title}</h2>
-          <p><strong>成本：</strong>{item.cost}</p>
-          <p><strong>说人话：</strong>{item.plain}</p>
-          <p><strong>收益：</strong>{item.benefit}</p>
-          <p><strong>证据等级：</strong>{item.evidence}</p>
-          <p><strong>来源：</strong>{item.source}</p>
-          {item.note && <p><strong>备注：</strong>{item.note}</p>}
-          <hr />
-        </article>
+          <p class="plain">{item.plain}</p>
+          <div class="meta">
+            <span class="tag">证据 {item.evidence}</span>
+            {item.value && <span class="tag">性价比 {item.value}</span>}
+            {item.costMoney === '0' && <span class="tag free">不花钱</span>}
+          </div>
+        </a>
       ))}
     </main>
+
+    <div class="load-more-wrap">
+      <button id="load-more">加载更多</button>
+    </div>
+
+    <script is:inline>
+      const STEP = 50;
+      let shown = 50;
+      const cards = document.querySelectorAll('.card');
+      const btn = document.getElementById('load-more');
+      const search = document.getElementById('search');
+      const filterEvidence = document.getElementById('filter-evidence');
+      const filterValue = document.getElementById('filter-value');
+      const filterCost = document.getElementById('filter-cost');
+      const resetBtn = document.getElementById('reset');
+
+      function applyFilters() {
+        const q = search.value.trim().toLowerCase();
+        const e = filterEvidence.value;
+        const v = filterValue.value;
+        const c = filterCost.value;
+
+        let visibleCount = 0;
+
+        cards.forEach((card, i) => {
+          const text = card.textContent.toLowerCase();
+          const matchQ = !q || text.includes(q);
+          const matchE = !e || card.dataset.evidence === e;
+          const matchV = !v || card.dataset.value === v;
+          const matchC = !c || card.dataset.costMoney === c;
+
+          const isMatch = matchQ && matchE && matchV && matchC;
+          const withinLimit = i < shown;
+
+          if (isMatch && withinLimit) {
+            card.style.display = '';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+
+        // 如果筛选/搜索生效，隐藏"加载更多"
+        const hasFilter = q || e || v || c;
+        btn.style.display = hasFilter ? 'none' : '';
+      }
+
+      btn.addEventListener('click', () => {
+        shown += STEP;
+        applyFilters();
+        if (shown >= cards.length) {
+          btn.style.display = 'none';
+        }
+      });
+
+      search.addEventListener('input', applyFilters);
+      filterEvidence.addEventListener('change', applyFilters);
+      filterValue.addEventListener('change', applyFilters);
+      filterCost.addEventListener('change', applyFilters);
+
+      resetBtn.addEventListener('click', () => {
+        search.value = '';
+        filterEvidence.value = '';
+        filterValue.value = '';
+        filterCost.value = '';
+        shown = 50;
+        applyFilters();
+      });
+    </script>
   </body>
 </html>
+
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background: #fafafa;
+    color: #222;
+    line-height: 1.6;
+  }
+
+  header {
+    max-width: 1100px;
+    margin: 0 auto 1.5rem;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem;
+  }
+
+  .count {
+    color: #888;
+    font-size: 0.875rem;
+    margin: 0;
+  }
+
+  #search {
+    width: 100%;
+    max-width: 500px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-top: 0.75rem;
+  }
+
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+
+  .filters select {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: white;
+  }
+
+  #reset {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    background: #eee;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #reset:hover {
+    background: #ddd;
+  }
+
+  .grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+
+  .card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: box-shadow 0.2s;
+  }
+
+  .card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 0.5rem;
+    line-height: 1.4;
+  }
+
+  .plain {
+    font-size: 0.875rem;
+    color: #555;
+    margin: 0 0 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .meta {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    background: #eef;
+    color: #336;
+    border-radius: 4px;
+  }
+
+  .tag.free {
+    background: #efe;
+    color: #363;
+  }
+
+  .load-more-wrap {
+    text-align: center;
+    margin: 2rem 0;
+  }
+
+  #load-more {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    background: #336;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #load-more:hover {
+    background: #224;
+  }
+</style>
