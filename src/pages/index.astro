@@ -1,16 +1,30 @@
 ---
+import items from '../data/items.json';
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>高性价比人生指南</title>
+  </head>
+  <body>
+    <main>
+      <h1>高性价比人生指南</h1>
+      <p>共 {items.length} 条建议</p>
+
+      {items.map((item) => (
+        <article>
+          <h2>{item.title}</h2>
+          <p><strong>成本：</strong>{item.cost}</p>
+          <p><strong>说人话：</strong>{item.plain}</p>
+          <p><strong>收益：</strong>{item.benefit}</p>
+          <p><strong>证据等级：</strong>{item.evidence}</p>
+          <p><strong>来源：</strong>{item.source}</p>
+          {item.note && <p><strong>备注：</strong>{item.note}</p>}
+          <hr />
+        </article>
+      ))}
+    </main>
+  </body>
 </html>
