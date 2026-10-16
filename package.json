@@ -15,6 +15,7 @@
     "astro": "^7.3.8"
   },
   "devDependencies": {
+    "@astrojs/sitemap": "^3.7.4",
     "workbox-build": "^7.4.1"
   }
 }
