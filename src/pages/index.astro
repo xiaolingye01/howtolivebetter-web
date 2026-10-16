@@ -1,5 +1,27 @@
 ---
 import items from '../data/items.json';
+
+// 提取所有章节
+const sections = [];
+const seen = new Set();
+items.forEach(item => {
+  if (!seen.has(item.section)) {
+    seen.add(item.section);
+    sections.push({
+      num: item.section,
+      title: item.sectionTitle,
+      count: 0,
+    });
+  }
+});
+
+// 统计每节条目数
+items.forEach(item => {
+  const s = sections.find(s => s.num === item.section);
+  if (s) s.count++;
+});
+
+sections.sort((a, b) => a.num - b.num);
 ---
 
 <html lang="zh-CN">
@@ -13,39 +35,73 @@ import items from '../data/items.json';
   </head>
   <body>
     <header>
-      <h1>高性价比人生指南</h1>
-      <p class="count">共 {items.length} 条建议</p>
+      <div class="top-bar">
+        <h1>高性价比人生指南</h1>
+        <div class="stats">
+          <span>共 <strong>{items.length}</strong> 条</span>
+        </div>
+      </div>
 
-      <input
-        type="search"
-        id="search"
-        placeholder="搜索：安全带、痛风、裁员..."
-      />
+      <div class="search-row">
+        <input
+          type="search"
+          id="search"
+          placeholder="搜一件事：戒烟、押金、猝死、采..."
+        />
+        <button id="theme-toggle" class="icon-btn" aria-label="切换主题">☾</button>
+      </div>
 
-      <div class="filters">
-        <select id="filter-evidence">
-          <option value="">全部证据等级</option>
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-        </select>
+      <div class="catalog">
+        <button class="catalog-toggle" id="catalog-toggle">
+          <span class="catalog-icon">☰</span>
+          <span>章节目录</span>
+          <span class="catalog-arrow">▾</span>
+        </button>
 
-        <select id="filter-value">
-          <option value="">全部性价比</option>
-          <option value="极大">极大</option>
-          <option value="大">大</option>
-          <option value="中">中</option>
-          <option value="小">小</option>
-        </select>
+        <div class="catalog-panel" id="catalog-panel">
+          <button class="section-btn active" data-section="">
+            全部
+            <span class="section-count">{items.length}</span>
+          </button>
+          {sections.map(s => (
+            <button class="section-btn" data-section={s.num}>
+              {s.num}. {s.title}
+              <span class="section-count">{s.count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <select id="filter-cost">
-          <option value="">花不花钱不限</option>
-          <option value="0">不花钱</option>
-          <option value="少">花小钱</option>
-          <option value="大">花大钱</option>
-        </select>
+      <div class="filters" id="filters">
+        <div class="filter-row">
+          <span class="filter-label">换回什么</span>
+          <button class="pill" data-filter="returns" data-value="寿命">换寿命 <span class="pill-count" id="count-寿命">0</span></button>
+          <button class="pill" data-filter="returns" data-value="金钱">换钱 <span class="pill-count" id="count-金钱">0</span></button>
+          <button class="pill" data-filter="returns" data-value="时间精力">换时间与精力 <span class="pill-count" id="count-时间精力">0</span></button>
+          <button class="pill" data-filter="returns" data-value="人身自由">换人身自由 <span class="pill-count" id="count-人身自由">0</span></button>
+        </div>
 
-        <button id="reset">重置</button>
+        <div class="filter-row">
+          <span class="filter-label">证据等级</span>
+          <button class="pill" data-filter="evidence" data-value="A">A 级 <span class="pill-count" id="count-A">0</span></button>
+          <button class="pill" data-filter="evidence" data-value="B">B 级 <span class="pill-count" id="count-B">0</span></button>
+          <button class="pill" data-filter="evidence" data-value="C">C 级 <span class="pill-count" id="count-C">0</span></button>
+        </div>
+
+        <div class="filter-row">
+          <span class="filter-label">成本</span>
+          <button class="pill" data-filter="costMoney" data-value="0">不花钱</button>
+          <button class="pill" data-filter="costTime" data-value="少">不占时间</button>
+          <button class="pill" data-filter="costWill" data-value="否">不用毅力</button>
+        </div>
+
+        <div class="filter-row">
+          <span class="filter-label">性价比</span>
+          <button class="pill" data-filter="value" data-value="大">大</button>
+          <button class="pill" data-filter="value" data-value="中">中</button>
+          <button class="pill" data-filter="value" data-value="小">小</button>
+          <button class="pill reset" id="reset">清空筛选</button>
+        </div>
       </div>
     </header>
 
@@ -55,14 +111,19 @@ import items from '../data/items.json';
           href={`/item/${item.id}`}
           class="card"
           data-index={index}
+          data-section={item.section}
           data-evidence={item.evidence}
           data-value={item.value}
           data-cost-money={item.costMoney}
+          data-cost-time={item.costTime}
+          data-cost-will={item.costWill}
+          data-returns={item.returns.join(',')}
           style={index >= 50 ? 'display:none' : ''}
         >
           <h2>{item.title}</h2>
           <p class="plain">{item.plain}</p>
           <div class="meta">
+            <span class="tag">{item.section}.{index + 1}</span>
             <span class="tag">证据 {item.evidence}</span>
             {item.value && <span class="tag">性价比 {item.value}</span>}
             {item.costMoney === '0' && <span class="tag free">不花钱</span>}
@@ -78,44 +139,173 @@ import items from '../data/items.json';
     <script is:inline>
       const STEP = 50;
       let shown = 50;
+      let currentSection = null; // 当前章节筛选
       const cards = document.querySelectorAll('.card');
       const btn = document.getElementById('load-more');
       const search = document.getElementById('search');
-      const filterEvidence = document.getElementById('filter-evidence');
-      const filterValue = document.getElementById('filter-value');
-      const filterCost = document.getElementById('filter-cost');
       const resetBtn = document.getElementById('reset');
+
+      const activeFilters = {
+        returns: [],
+        evidence: [],
+        costMoney: [],
+        costTime: [],
+        costWill: [],
+        value: [],
+      };
+
+      const FILTER_MAP = {
+        '寿命': ['寿命', '死亡'],
+        '金钱': ['金钱'],
+        '时间精力': ['时间', '精力'],
+        '人身自由': ['自由'],
+      };
+
+      function computeCounts() {
+        const counts = {
+          '寿命': 0, '金钱': 0, '时间精力': 0, '人身自由': 0,
+          'A': 0, 'B': 0, 'C': 0,
+        };
+
+        cards.forEach((card) => {
+          const returns = card.dataset.returns ? card.dataset.returns.split(',') : [];
+          const evidence = card.dataset.evidence || '';
+
+          returns.forEach(r => {
+            Object.keys(FILTER_MAP).forEach(key => {
+              if (FILTER_MAP[key].some(kw => r.includes(kw))) {
+                counts[key]++;
+              }
+            });
+          });
+
+          if (counts[evidence] !== undefined) counts[evidence]++;
+        });
+
+        return counts;
+      }
+
+      function renderCounts() {
+        const counts = computeCounts();
+        Object.keys(counts).forEach(key => {
+          const el = document.getElementById('count-' + key);
+          if (el) el.textContent = counts[key];
+        });
+      }
 
       function applyFilters() {
         const q = search.value.trim().toLowerCase();
-        const e = filterEvidence.value;
-        const v = filterValue.value;
-        const c = filterCost.value;
-
-        let visibleCount = 0;
+        const hasFilterNow = q ||
+          currentSection !== null ||
+          Object.values(activeFilters).some(arr => arr.length > 0);
 
         cards.forEach((card, i) => {
           const text = card.textContent.toLowerCase();
+          const cardReturns = card.dataset.returns ? card.dataset.returns.split(',') : [];
+          const cardSection = parseInt(card.dataset.section);
+
+          // 章节筛选
+          const matchSection = currentSection === null || cardSection === currentSection;
+
           const matchQ = !q || text.includes(q);
-          const matchE = !e || card.dataset.evidence === e;
-          const matchV = !v || card.dataset.value === v;
-          const matchC = !c || card.dataset.costMoney === c;
 
-          const isMatch = matchQ && matchE && matchV && matchC;
-          const withinLimit = i < shown;
+          const categoryMatches = [];
 
-          if (isMatch && withinLimit) {
-            card.style.display = '';
-            visibleCount++;
-          } else {
-            card.style.display = 'none';
+          if (activeFilters.returns.length > 0) {
+            const hit = activeFilters.returns.some(r =>
+              FILTER_MAP[r].some(kw => cardReturns.some(cr => cr.includes(kw)))
+            );
+            categoryMatches.push(hit);
           }
+
+          if (activeFilters.evidence.length > 0) {
+            categoryMatches.push(activeFilters.evidence.includes(card.dataset.evidence));
+          }
+
+          if (activeFilters.costMoney.length > 0 || activeFilters.costTime.length > 0 || activeFilters.costWill.length > 0) {
+            const costHit =
+              (activeFilters.costMoney.length > 0 && activeFilters.costMoney.includes(card.dataset.costMoney)) ||
+              (activeFilters.costTime.length > 0 && activeFilters.costTime.includes(card.dataset.costTime)) ||
+              (activeFilters.costWill.length > 0 && activeFilters.costWill.includes(card.dataset.costWill));
+            categoryMatches.push(costHit);
+          }
+
+          if (activeFilters.value.length > 0) {
+            categoryMatches.push(activeFilters.value.includes(card.dataset.value));
+          }
+
+          const matchFilters = categoryMatches.every(m => m);
+          const isMatch = matchSection && matchQ && matchFilters;
+          const withinLimit = hasFilterNow ? true : i < shown;
+
+          card.style.display = (isMatch && withinLimit) ? '' : 'none';
         });
 
-        // 如果筛选/搜索生效，隐藏"加载更多"
-        const hasFilter = q || e || v || c;
-        btn.style.display = hasFilter ? 'none' : '';
+        btn.style.display = hasFilterNow ? 'none' : '';
       }
+
+      // ============ 目录交互 ============
+      const catalogToggle = document.getElementById('catalog-toggle');
+      const catalogPanel = document.getElementById('catalog-panel');
+
+      catalogToggle.addEventListener('click', () => {
+        catalogPanel.classList.toggle('open');
+        catalogToggle.classList.toggle('open');
+      });
+
+      document.querySelectorAll('.section-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const section = btn.dataset.section;
+
+          // 重置筛选状态
+          Object.keys(activeFilters).forEach(k => activeFilters[k] = []);
+          document.querySelectorAll('.pill.active').forEach(p => p.classList.remove('active'));
+          document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active'));
+          search.value = '';
+          shown = 50;
+
+          btn.classList.add('active');
+          currentSection = section ? parseInt(section) : null;
+
+          applyFilters();
+          catalogPanel.classList.remove('open');
+          catalogToggle.classList.remove('open');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+
+      // ============ 胶囊筛选 ============
+      document.querySelectorAll('.pill[data-filter]').forEach(pill => {
+        pill.addEventListener('click', () => {
+          const filterKey = pill.dataset.filter;
+          const value = pill.dataset.value;
+
+          if (activeFilters[filterKey]) {
+            const idx = activeFilters[filterKey].indexOf(value);
+            if (idx >= 0) {
+              activeFilters[filterKey].splice(idx, 1);
+              pill.classList.remove('active');
+            } else {
+              activeFilters[filterKey].push(value);
+              pill.classList.add('active');
+            }
+            applyFilters();
+          }
+        });
+      });
+
+      search.addEventListener('input', applyFilters);
+
+      resetBtn.addEventListener('click', () => {
+        search.value = '';
+        Object.keys(activeFilters).forEach(k => activeFilters[k] = []);
+        document.querySelectorAll('.pill.active').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.section-btn[data-section=""]').classList.add('active');
+        currentSection = null;
+        shown = 50;
+        applyFilters();
+      });
 
       btn.addEventListener('click', () => {
         shown += STEP;
@@ -125,92 +315,272 @@ import items from '../data/items.json';
         }
       });
 
-      search.addEventListener('input', applyFilters);
-      filterEvidence.addEventListener('change', applyFilters);
-      filterValue.addEventListener('change', applyFilters);
-      filterCost.addEventListener('change', applyFilters);
-
-      resetBtn.addEventListener('click', () => {
-        search.value = '';
-        filterEvidence.value = '';
-        filterValue.value = '';
-        filterCost.value = '';
-        shown = 50;
-        applyFilters();
-      });
+      renderCounts();
     </script>
+
     <script defer src="https://cloud.umami.is/script.js" data-website-id="ab6d5c95-02a7-413f-a124-62a30160611d"></script>
   </body>
 </html>
 
 <style>
+  :root {
+    --bg: #F7F3EA;
+    --bg-card: #FDFBF6;
+    --text: #2C2822;
+    --text-muted: #8A8070;
+    --accent: #C9A961;
+    --accent-dark: #A8894A;
+    --border: #E8E0D0;
+    --tag-bg: #F0E9D8;
+    --font-serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+    --font-sans: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --radius: 12px;
+    --radius-sm: 6px;
+  }
+
   * { box-sizing: border-box; }
 
-  body {
-    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  html, body {
     margin: 0;
-    padding: 1rem;
-    background: #fafafa;
-    color: #222;
-    line-height: 1.6;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem 1.25rem;
+    -webkit-font-smoothing: antialiased;
   }
 
   header {
-    max-width: 1100px;
-    margin: 0 auto 1.5rem;
+    max-width: 1080px;
+    margin: 0 auto 2rem;
   }
 
   header h1 {
-    font-size: 1.5rem;
-    margin: 0 0 0.25rem;
+    font-family: var(--font-serif);
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0 0 0.375rem;
+    letter-spacing: 0.02em;
   }
 
-  .count {
-    color: #888;
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.375rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .stats {
     font-size: 0.875rem;
-    margin: 0;
+    color: var(--text-muted);
+  }
+
+  .stats strong {
+    color: var(--accent-dark);
+  }
+
+  .search-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
   }
 
   #search {
     width: 100%;
-    max-width: 500px;
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    margin-top: 0.75rem;
+    max-width: 480px;
+    padding: 0.75rem 1.125rem;
+    font-size: 0.9375rem;
+    font-family: var(--font-sans);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text);
+    transition: border-color 0.2s;
   }
 
+  #search::placeholder {
+    color: var(--text-muted);
+  }
+
+  #search:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .icon-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+
+  .icon-btn:hover {
+    border-color: var(--accent);
+  }
+
+  /* ========== 目录 ========== */
+  .catalog {
+    margin-bottom: 1rem;
+  }
+
+  .catalog-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .catalog-toggle:hover {
+    border-color: var(--accent);
+  }
+
+  .catalog-arrow {
+    transition: transform 0.2s;
+    font-size: 0.75rem;
+  }
+
+  .catalog-toggle.open .catalog-arrow {
+    transform: rotate(180deg);
+  }
+
+  .catalog-panel {
+    display: none;
+    margin-top: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .catalog-panel.open {
+    display: grid;
+  }
+
+  .section-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    background: transparent;
+    color: var(--text);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+
+  .section-btn:hover {
+    background: var(--tag-bg);
+    color: var(--accent-dark);
+  }
+
+  .section-btn.active {
+    background: var(--accent);
+    color: #FFFFFF;
+  }
+
+  .section-btn.active .section-count {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .section-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* ========== 筛选器 ========== */
   .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin-top: 0.5rem;
+  }
+
+  .filter-row {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-top: 0.75rem;
+    align-items: center;
   }
 
-  .filters select {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: white;
+  .filter-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-right: 0.25rem;
+    min-width: 5rem;
   }
 
-  #reset {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    background: #eee;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    background: var(--bg-card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
     cursor: pointer;
+    transition: all 0.15s;
   }
 
-  #reset:hover {
-    background: #ddd;
+  .pill:hover {
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  .pill.active {
+    background: var(--accent);
+    color: #FFFFFF;
+    border-color: var(--accent);
+  }
+
+  .pill.active .pill-count {
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .pill-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .pill.reset {
+    margin-left: auto;
+    color: var(--text-muted);
   }
 
   .grid {
-    max-width: 1100px;
+    max-width: 1080px;
     margin: 0 auto;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -221,31 +591,37 @@ import items from '../data/items.json';
     display: block;
     text-decoration: none;
     color: inherit;
-    background: white;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    padding: 1rem;
-    transition: box-shadow 0.2s;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.125rem 1.25rem;
+    transition: all 0.25s ease;
   }
 
   .card:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    border-color: var(--accent);
+    box-shadow: 0 6px 20px rgba(201, 169, 97, 0.12);
+    transform: translateY(-2px);
   }
 
   .card h2 {
-    font-size: 1rem;
-    margin: 0 0 0.5rem;
-    line-height: 1.4;
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    margin: 0 0 0.625rem;
+    line-height: 1.45;
+    color: var(--text);
   }
 
   .plain {
     font-size: 0.875rem;
-    color: #555;
-    margin: 0 0 0.75rem;
+    color: var(--text-muted);
+    margin: 0 0 0.875rem;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    line-height: 1.65;
   }
 
   .meta {
@@ -255,34 +631,65 @@ import items from '../data/items.json';
   }
 
   .tag {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.5rem;
-    background: #eef;
-    color: #336;
-    border-radius: 4px;
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    background: var(--tag-bg);
+    color: var(--accent-dark);
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+    font-weight: 500;
   }
 
   .tag.free {
-    background: #efe;
-    color: #363;
+    background: #E6EFE0;
+    color: #5A7A4A;
   }
 
   .load-more-wrap {
     text-align: center;
-    margin: 2rem 0;
+    margin: 2.5rem 0 1rem;
   }
 
   #load-more {
     padding: 0.75rem 2rem;
-    font-size: 1rem;
-    background: #336;
-    color: white;
+    font-size: 0.9375rem;
+    font-family: var(--font-sans);
+    background: var(--accent);
+    color: #FFFFFF;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
+    transition: background 0.2s;
   }
 
   #load-more:hover {
-    background: #224;
+    background: var(--accent-dark);
+  }
+
+  @media (max-width: 640px) {
+    body {
+      padding: 1.5rem 1rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+    }
+
+    .grid {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .filter-label {
+      min-width: 100%;
+    }
+
+    .pill.reset {
+      margin-left: 0;
+    }
+
+    .catalog-panel {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

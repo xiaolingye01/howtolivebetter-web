@@ -2,146 +2,392 @@
 import items from '../../data/items.json';
 
 export function getStaticPaths() {
-  return items.map((item) => ({
+  return items.map(item => ({
     params: { id: item.id },
     props: { item },
   }));
 }
 
 const { item } = Astro.props;
+
+// 找相关条目（同一章节的其他条目，最多 3 条）
+const related = items
+  .filter(i => i.section === item.section && i.id !== item.id)
+  .slice(0, 3);
 ---
 
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{item.title} - 高性价比人生指南</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>{item.title} · 高性价比人生指南</title>
+    <meta name="description" content={item.plain} />
   </head>
   <body>
-    <article>
-      <a href="/" class="back">← 返回列表</a>
+    <div class="container">
+      <a href="/" class="back">← 返回目录</a>
 
-      <header>
-        <div class="section">第 {item.section} 节 · {item.sectionTitle}</div>
-        <h1>{item.title}</h1>
-      </header>
+      <article class="card">
+        <header class="card-header">
+          <div class="section-line">
+            <span class="section-num">第 {item.section} 节</span>
+            <span class="section-title">{item.sectionTitle}</span>
+          </div>
+          <h1>{item.title}</h1>
+          <div class="meta">
+            <span class="tag">证据 {item.evidence}</span>
+            {item.value && <span class="tag">性价比 {item.value}</span>}
+            {item.costMoney === '0' && <span class="tag free">不花钱</span>}
+            {item.costTime === '少' && <span class="tag free">不占时间</span>}
+            {item.costWill === '否' && <span class="tag free">不用毅力</span>}
+          </div>
+        </header>
 
-      <section>
-        <h2>成本</h2>
-        <p>{item.cost}</p>
-      </section>
-
-      <section>
-        <h2>说人话</h2>
-        <p>{item.plain}</p>
-      </section>
-
-      <section>
-        <h2>收益</h2>
-        <p>{item.benefit}</p>
-      </section>
-
-      <section>
-        <h2>证据等级</h2>
-        <p>{item.evidence}</p>
-      </section>
-
-      {item.source && (
-        <section>
-          <h2>来源</h2>
-          <p>{item.source}</p>
+        <section class="field">
+          <h2>成本</h2>
+          <p>{item.cost}</p>
         </section>
+
+        <section class="field highlight">
+          <h2>说人话</h2>
+          <p>{item.plain}</p>
+        </section>
+
+        <section class="field">
+          <h2>收益</h2>
+          <p>{item.benefit}</p>
+        </section>
+
+        {item.note && (
+          <section class="field">
+            <h2>备注</h2>
+            <p>{item.note}</p>
+          </section>
+        )}
+
+        {item.source && (
+          <details class="source-details">
+            <summary>来源（点击展开）</summary>
+            <div class="source-content">
+              <p>{item.source}</p>
+            </div>
+          </details>
+        )}
+      </article>
+
+      {related.length > 0 && (
+        <aside class="related">
+          <h3>同章节的其他建议</h3>
+          <div class="related-list">
+            {related.map(r => (
+              <a href={`/item/${r.id}`} class="related-card">
+                <div class="related-title">{r.title}</div>
+                <div class="related-plain">{r.plain.slice(0, 60)}...</div>
+              </a>
+            ))}
+          </div>
+        </aside>
       )}
 
-      {item.note && (
-        <section>
-          <h2>备注</h2>
-          <p>{item.note}</p>
-        </section>
-      )}
-
-      <footer>
-        <a href="/" class="back">← 返回列表</a>
+      <footer class="page-footer">
+        <a href="/" class="back">← 返回目录</a>
       </footer>
-    </article>
+    </div>
+
     <script defer src="https://cloud.umami.is/script.js" data-website-id="ab6d5c95-02a7-413f-a124-62a30160611d"></script>
-    <script is:inline>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(registration => {
-        console.log('SW registered: ', registration);
-      }).catch(registrationError => {
-        console.log('SW registration failed: ', registrationError);
-      });
-    });
-  }
-</script> 
   </body>
 </html>
 
 <style>
+  :root {
+    --bg: #F7F3EA;
+    --bg-card: #FDFBF6;
+    --text: #2C2822;
+    --text-muted: #8A8070;
+    --accent: #C9A961;
+    --accent-dark: #A8894A;
+    --border: #E8E0D0;
+    --tag-bg: #F0E9D8;
+    --font-serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+    --font-sans: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --radius: 12px;
+    --radius-sm: 6px;
+  }
+
   * { box-sizing: border-box; }
 
-  body {
-    font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  html, body {
     margin: 0;
-    padding: 1rem;
-    background: #fafafa;
-    color: #222;
-    line-height: 1.7;
+    padding: 0;
   }
 
-  article {
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem 1.25rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
     max-width: 720px;
     margin: 0 auto;
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #e5e5e5;
   }
 
+  /* 返回链接 */
   .back {
     display: inline-block;
-    color: #336;
+    color: var(--text-muted);
     text-decoration: none;
     font-size: 0.875rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s;
   }
 
   .back:hover {
-    text-decoration: underline;
+    color: var(--accent-dark);
   }
 
-  .section {
+  /* 主卡片 */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 2.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .card-header {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.75rem;
+  }
+
+  .section-line {
     font-size: 0.75rem;
-    color: #888;
-    margin-bottom: 0.5rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-num {
+    color: var(--accent-dark);
+  }
+
+  .section-title {
+    color: var(--text-muted);
   }
 
   h1 {
-    font-size: 1.375rem;
+    font-family: var(--font-serif);
+    font-size: 1.625rem;
+    font-weight: 600;
     line-height: 1.4;
-    margin: 0 0 1.5rem;
+    margin: 0 0 1.25rem;
+    letter-spacing: 0.02em;
   }
 
-  h2 {
-    font-size: 0.875rem;
-    color: #888;
-    margin: 1.5rem 0 0.5rem;
+  .meta {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 0.6875rem;
+    padding: 0.1875rem 0.5rem;
+    background: var(--tag-bg);
+    color: var(--accent-dark);
+    border-radius: 999px;
+    letter-spacing: 0.02em;
     font-weight: 500;
   }
 
-  section p {
-    margin: 0;
-    white-space: pre-wrap;
+  .tag.free {
+    background: #E6EFE0;
+    color: #5A7A4A;
   }
 
-  footer {
-    margin-top: 2rem;
+  /* 字段 */
+  .field {
+    margin-bottom: 1.75rem;
+  }
+
+  .field:last-child {
+    margin-bottom: 0;
+  }
+
+  h2 {
+    font-family: var(--font-serif);
+    font-size: 0.875rem;
+    color: var(--accent-dark);
+    margin: 0 0 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  h2::before {
+    content: "— ";
+    color: var(--accent);
+  }
+
+  .field p {
+    margin: 0;
+    white-space: pre-wrap;
+    color: var(--text);
+    font-size: 0.9375rem;
+    line-height: 1.85;
+  }
+
+  /* 说人话：高亮 */
+  .field.highlight {
+    background: var(--tag-bg);
+    padding: 1.125rem 1.25rem;
+    border-radius: var(--radius-sm);
+    margin-left: -1.25rem;
+    margin-right: -1.25rem;
+  }
+
+  .field.highlight h2 {
+    margin-top: 0;
+  }
+
+  .field.highlight p {
+    font-size: 1rem;
+    line-height: 1.85;
+    color: var(--text);
+  }
+
+  /* 来源折叠 */
+  .source-details {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .source-details summary {
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    padding: 0.5rem 0;
+    list-style: none;
+    user-select: none;
+    transition: color 0.2s;
+  }
+
+  .source-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .source-details summary::before {
+    content: "▸ ";
+    display: inline-block;
+    transition: transform 0.2s;
+  }
+
+  .source-details[open] summary::before {
+    content: "▾ ";
+  }
+
+  .source-details summary:hover {
+    color: var(--accent-dark);
+  }
+
+  .source-content {
+    margin-top: 0.75rem;
+    padding: 1rem 1.125rem;
+    background: var(--tag-bg);
+    border-radius: var(--radius-sm);
+  }
+
+  .source-content p {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+    word-break: break-word;
+  }
+
+  /* 相关条目 */
+  .related {
+    margin-bottom: 2rem;
+  }
+
+  .related h3 {
+    font-family: var(--font-serif);
+    font-size: 0.9375rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0 0 0.875rem;
+    letter-spacing: 0.05em;
+  }
+
+  .related-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .related-card {
+    display: block;
+    padding: 0.875rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+  }
+
+  .related-card:hover {
+    border-color: var(--accent);
+    transform: translateX(4px);
+  }
+
+  .related-title {
+    font-family: var(--font-serif);
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+  }
+
+  .related-plain {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* 页脚 */
+  .page-footer {
+    text-align: center;
     padding-top: 1rem;
-    border-top: 1px solid #eee;
+  }
+
+  /* 手机适配 */
+  @media (max-width: 640px) {
+    body {
+      padding: 1.25rem 1rem;
+    }
+
+    .card {
+      padding: 1.5rem 1.25rem;
+    }
+
+    h1 {
+      font-size: 1.375rem;
+    }
+
+    .field.highlight {
+      margin-left: -0.75rem;
+      margin-right: -0.75rem;
+      padding: 1rem;
+    }
   }
 </style>
