@@ -15,7 +15,6 @@ items.forEach(item => {
   }
 });
 
-// 统计每节条目数
 items.forEach(item => {
   const s = sections.find(s => s.num === item.section);
   if (s) s.count++;
@@ -48,7 +47,7 @@ sections.sort((a, b) => a.num - b.num);
           id="search"
           placeholder="搜一件事：戒烟、押金、猝死、采..."
         />
-        <button id="theme-toggle" class="icon-btn" aria-label="切换主题">☾</button>
+        <button id="favorites-btn" class="icon-btn" title="我的收藏">☆</button>
       </div>
 
       <div class="catalog">
@@ -107,28 +106,23 @@ sections.sort((a, b) => a.num - b.num);
 
     <main class="grid" id="grid">
       {items.map((item, index) => (
-        <a
-          href={`/item/${item.id}`}
-          class="card"
-          data-index={index}
-          data-section={item.section}
-          data-evidence={item.evidence}
-          data-value={item.value}
-          data-cost-money={item.costMoney}
-          data-cost-time={item.costTime}
-          data-cost-will={item.costWill}
-          data-returns={item.returns.join(',')}
-          style={index >= 50 ? 'display:none' : ''}
-        >
-          <h2>{item.title}</h2>
-          <p class="plain">{item.plain}</p>
-          <div class="meta">
-            <span class="tag">{item.section}.{index + 1}</span>
-            <span class="tag">证据 {item.evidence}</span>
-            {item.value && <span class="tag">性价比 {item.value}</span>}
-            {item.costMoney === '0' && <span class="tag free">不花钱</span>}
-          </div>
-        </a>
+        <div class="card-wrap" data-id={item.id} data-section={item.section} data-evidence={item.evidence} data-value={item.value} data-cost-money={item.costMoney} data-cost-time={item.costTime} data-cost-will={item.costWill} data-returns={item.returns.join(',')} data-index={index}>
+          <a
+            href={`/item/${item.id}`}
+            class="card"
+            style={index >= 50 ? 'display:none' : ''}
+          >
+            <h2>{item.title}</h2>
+            <p class="plain">{item.plain}</p>
+            <div class="meta">
+              <span class="tag">{item.section}.{index + 1}</span>
+              <span class="tag">证据 {item.evidence}</span>
+              {item.value && <span class="tag">性价比 {item.value}</span>}
+              {item.costMoney === '0' && <span class="tag free">不花钱</span>}
+            </div>
+          </a>
+          <button class="fav-btn" data-id={item.id} title="收藏">☆</button>
+        </div>
       ))}
     </main>
 
@@ -139,12 +133,89 @@ sections.sort((a, b) => a.num - b.num);
     <script is:inline>
       const STEP = 50;
       let shown = 50;
-      let currentSection = null; // 当前章节筛选
-      const cards = document.querySelectorAll('.card');
+      let currentSection = null;
+      let favoritesOnly = false;
+
+      const cards = document.querySelectorAll('.card-wrap');
       const btn = document.getElementById('load-more');
       const search = document.getElementById('search');
       const resetBtn = document.getElementById('reset');
+      const favBtn = document.getElementById('favorites-btn');
 
+      // ============ 收藏管理 ============
+      const FAV_KEY = 'howtolivebetter-favorites';
+
+      function getFavorites() {
+        try {
+          const raw = localStorage.getItem(FAV_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function saveFavorites(list) {
+        localStorage.setItem(FAV_KEY, JSON.stringify(list));
+      }
+
+      function isFavorite(id) {
+        return getFavorites().includes(id);
+      }
+
+      function toggleFavorite(id) {
+        const list = getFavorites();
+        const idx = list.indexOf(id);
+        if (idx >= 0) {
+          list.splice(idx, 1);
+        } else {
+          list.push(id);
+        }
+        saveFavorites(list);
+        updateFavButtons();
+        updateFavBtnState();
+        applyFilters();
+      }
+
+      function updateFavButtons() {
+        document.querySelectorAll('.fav-btn').forEach(btn => {
+          const id = btn.dataset.id;
+          if (isFavorite(id)) {
+            btn.classList.add('active');
+            btn.textContent = '★';
+          } else {
+            btn.classList.remove('active');
+            btn.textContent = '☆';
+          }
+        });
+      }
+
+      function updateFavBtnState() {
+        const count = getFavorites().length;
+        favBtn.textContent = count > 0 ? `★ ${count}` : '☆';
+        if (favoritesOnly) {
+          favBtn.classList.add('active');
+        } else {
+          favBtn.classList.remove('active');
+        }
+      }
+
+      // 绑定收藏按钮点击
+      document.querySelectorAll('.fav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite(btn.dataset.id);
+        });
+      });
+
+      // 顶部收藏按钮：切换"只看收藏"
+      favBtn.addEventListener('click', () => {
+        favoritesOnly = !favoritesOnly;
+        updateFavBtnState();
+        applyFilters();
+      });
+
+      // ============ 筛选 ============
       const activeFilters = {
         returns: [],
         evidence: [],
@@ -197,15 +268,20 @@ sections.sort((a, b) => a.num - b.num);
         const q = search.value.trim().toLowerCase();
         const hasFilterNow = q ||
           currentSection !== null ||
+          favoritesOnly ||
           Object.values(activeFilters).some(arr => arr.length > 0);
 
         cards.forEach((card, i) => {
-          const text = card.textContent.toLowerCase();
+          const cardEl = card.querySelector('.card');
+          const text = cardEl.textContent.toLowerCase();
           const cardReturns = card.dataset.returns ? card.dataset.returns.split(',') : [];
           const cardSection = parseInt(card.dataset.section);
 
           // 章节筛选
           const matchSection = currentSection === null || cardSection === currentSection;
+
+          // 收藏筛选
+          const matchFav = !favoritesOnly || isFavorite(card.dataset.id);
 
           const matchQ = !q || text.includes(q);
 
@@ -235,7 +311,7 @@ sections.sort((a, b) => a.num - b.num);
           }
 
           const matchFilters = categoryMatches.every(m => m);
-          const isMatch = matchSection && matchQ && matchFilters;
+          const isMatch = matchSection && matchFav && matchQ && matchFilters;
           const withinLimit = hasFilterNow ? true : i < shown;
 
           card.style.display = (isMatch && withinLimit) ? '' : 'none';
@@ -244,7 +320,7 @@ sections.sort((a, b) => a.num - b.num);
         btn.style.display = hasFilterNow ? 'none' : '';
       }
 
-      // ============ 目录交互 ============
+      // ============ 目录 ============
       const catalogToggle = document.getElementById('catalog-toggle');
       const catalogPanel = document.getElementById('catalog-panel');
 
@@ -257,12 +333,13 @@ sections.sort((a, b) => a.num - b.num);
         btn.addEventListener('click', () => {
           const section = btn.dataset.section;
 
-          // 重置筛选状态
           Object.keys(activeFilters).forEach(k => activeFilters[k] = []);
           document.querySelectorAll('.pill.active').forEach(p => p.classList.remove('active'));
           document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active'));
           search.value = '';
           shown = 50;
+          favoritesOnly = false;
+          updateFavBtnState();
 
           btn.classList.add('active');
           currentSection = section ? parseInt(section) : null;
@@ -303,6 +380,8 @@ sections.sort((a, b) => a.num - b.num);
         document.querySelectorAll('.section-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.section-btn[data-section=""]').classList.add('active');
         currentSection = null;
+        favoritesOnly = false;
+        updateFavBtnState();
         shown = 50;
         applyFilters();
       });
@@ -315,6 +394,9 @@ sections.sort((a, b) => a.num - b.num);
         }
       });
 
+      // ============ 初始化 ============
+      updateFavButtons();
+      updateFavBtnState();
       renderCounts();
     </script>
 
@@ -420,20 +502,27 @@ sections.sort((a, b) => a.num - b.num);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.125rem;
+    font-size: 1rem;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 50%;
     cursor: pointer;
     color: var(--text);
-    transition: border-color 0.2s;
+    transition: all 0.2s;
+    flex-shrink: 0;
   }
 
   .icon-btn:hover {
     border-color: var(--accent);
+    color: var(--accent-dark);
   }
 
-  /* ========== 目录 ========== */
+  .icon-btn.active {
+    background: var(--accent);
+    color: #FFFFFF;
+    border-color: var(--accent);
+  }
+
   .catalog {
     margin-bottom: 1rem;
   }
@@ -516,7 +605,6 @@ sections.sort((a, b) => a.num - b.num);
     color: var(--text-muted);
   }
 
-  /* ========== 筛选器 ========== */
   .filters {
     display: flex;
     flex-direction: column;
@@ -587,6 +675,10 @@ sections.sort((a, b) => a.num - b.num);
     gap: 1rem;
   }
 
+  .card-wrap {
+    position: relative;
+  }
+
   .card {
     display: block;
     text-decoration: none;
@@ -596,6 +688,7 @@ sections.sort((a, b) => a.num - b.num);
     border-radius: var(--radius);
     padding: 1.125rem 1.25rem;
     transition: all 0.25s ease;
+    height: 100%;
   }
 
   .card:hover {
@@ -611,6 +704,7 @@ sections.sort((a, b) => a.num - b.num);
     margin: 0 0 0.625rem;
     line-height: 1.45;
     color: var(--text);
+    padding-right: 2rem;
   }
 
   .plain {
@@ -643,6 +737,37 @@ sections.sort((a, b) => a.num - b.num);
   .tag.free {
     background: #E6EFE0;
     color: #5A7A4A;
+  }
+
+  /* 收藏按钮 */
+  .fav-btn {
+    position: absolute;
+    top: 0.875rem;
+    right: 0.875rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+    z-index: 2;
+  }
+
+  .fav-btn:hover {
+  background: var(--tag-bg);
+  color: var(--accent-dark);    /* 金色 */
+  transform: scale(1.15);
+  }
+
+.fav-btn.active {
+  color: var(--accent-dark);    /* 金色 */
   }
 
   .load-more-wrap {
