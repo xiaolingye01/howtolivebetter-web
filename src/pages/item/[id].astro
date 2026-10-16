@@ -37,6 +37,12 @@ const related = items
             <span class="section-title">{item.sectionTitle}</span>
           </div>
           <h1>{item.title}</h1>
+          <div class="actions">
+            <button id="share-btn" class="action-btn">
+              <span class="action-icon">↗</span>
+              <span>分享</span>
+            </button>
+          </div>
           <div class="meta">
             <span class="tag">证据 {item.evidence}</span>
             {item.value && <span class="tag">性价比 {item.value}</span>}
@@ -96,6 +102,73 @@ const related = items
         <a href="/" class="back">← 返回目录</a>
       </footer>
     </div>
+
+    <script is:inline>
+      const shareBtn = document.getElementById('share-btn');
+
+      shareBtn.addEventListener('click', async () => {
+        const title = document.title.replace(' · 高性价比人生指南', '');
+        const url = window.location.href;
+        const text = `高性价比人生指南 · ${title}`;
+
+        // 优先用系统分享（手机）
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: title,
+              text: text,
+              url: url,
+            });
+            showToast('已分享');
+          } catch (err) {
+            // 用户取消，不算错误
+            if (err.name !== 'AbortError') {
+              copyToClipboard(url);
+            }
+          }
+        } else {
+          // 桌面浏览器：复制链接
+          copyToClipboard(url);
+        }
+      });
+
+      async function copyToClipboard(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('链接已复制，可以粘贴分享');
+        } catch (err) {
+          // 老浏览器兜底
+          const input = document.createElement('input');
+          input.value = text;
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand('copy');
+          document.body.removeChild(input);
+          showToast('链接已复制，可以粘贴分享');
+        }
+      }
+
+      function showToast(message) {
+        // 移除旧的
+        const old = document.querySelector('.toast');
+        if (old) old.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // 强制重绘，触发动画
+        requestAnimationFrame(() => {
+          toast.classList.add('show');
+        });
+
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      }
+    </script>
 
     <script defer src="https://cloud.umami.is/script.js" data-website-id="ab6d5c95-02a7-413f-a124-62a30160611d"></script>
   </body>
@@ -192,6 +265,66 @@ const related = items
     line-height: 1.4;
     margin: 0 0 1.25rem;
     letter-spacing: 0.02em;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-family: var(--font-sans);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent-dark);
+  }
+
+  .action-btn:active {
+    transform: scale(0.97);
+  }
+
+  .action-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  /* ========== Toast 提示 ========== */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    padding: 0.75rem 1.5rem;
+    background: rgba(44, 40, 34, 0.92);
+    color: #FFFFFF;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-family: var(--font-sans);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 80vw;
+    text-align: center;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 
   .meta {
